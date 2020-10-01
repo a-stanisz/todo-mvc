@@ -61,7 +61,7 @@ class View {
     // Append the input and the submit button to the form
     this.form.append(this.input, this.submitButton);
 
-    // Append the title, form, and TODo list to the app
+    // Append the title, form, and TODO list to the app
     this.app.append(this.title, this.form, this.todoList);
   }
 
@@ -82,6 +82,54 @@ class View {
   getElement(selector) {
     const element = document.querySelector(selector);
     return element;
+  }
+
+  displayTodos(todos) {
+    // Delete all nodes
+    while (this.todoList.firstChild) {
+      this.todoList.removeChild(this.todoList.firstChild);
+    }
+
+    // Show default message
+    if (todos.length === 0) {
+      const p = this.createElement('p');
+      p.textContent = 'No tasks, maybe add some?';
+      this.todoList.append(p);
+    } else {
+      // Create TODO item nodes for each todo in state
+      todos.forEach((todo) => {
+        const li = this.createElement('li');
+        li.id = todo.id;
+
+        // Each TODO item has a checkbox to toggle
+        const checkbox = this.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.complete;
+
+        // Each TODO item is within a content-editable span
+        const span = this.createElement('span');
+        span.contentEditable = true;
+        span.classList.add('editable');
+
+        // Done TODO has a strikethrough
+        if (todo.complete) {
+          const strike = this.createElement('s');
+          strike.textContent = todo.text;
+          span.append(strike);
+        } else {
+          // Not done TODO is just a normal text
+          span.textContent = todo.text;
+        }
+
+        // Each TODO has a delete button
+        const deleteButton = this.createElement('button', 'delete');
+        deleteButton.textContent = 'Delete';
+        li.append(checkbox, span, deleteButton);
+
+        // Append above li nodes to the TODO list
+        this.todoList.append(li);
+      });
+    }
   }
 }
 

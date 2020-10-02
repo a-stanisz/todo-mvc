@@ -1,9 +1,15 @@
 class Model {
   constructor() {
-    this.todos = [
-      { id: 1, text: 'Fly to the Moon', complete: false },
-      { id: 2, text: 'Tide up the room', complete: false },
-    ];
+    this.todos = JSON.parse(localStorage.getItem('todos')) || [];
+  }
+
+  bindTodoListChanged(callback) {
+    this.onTodoListChanged = callback;
+  }
+
+  _commit(todos) {
+    this.onTodoListChanged(todos);
+    localStorage.setItem('todos', JSON.stringify(todos));
   }
 
   addTodo(todoText) {
@@ -14,6 +20,8 @@ class Model {
     };
 
     this.todos.push(todo);
+
+    this._commit(this.todos);
   }
 
   editTodo(id, updatedText) {
@@ -22,10 +30,14 @@ class Model {
         ? { id: todo.id, text: updatedText, complete: todo.complete }
         : todo
     );
+
+    this._commit(this.todos);
   }
 
   deleteTodo(id) {
     this.todos = this.todos.filter((todo) => todo.id !== id);
+
+    this._commit(this.todos);
   }
 
   toggleTodo(id) {
@@ -34,6 +46,8 @@ class Model {
         ? { id: todo.id, text: todo.text, complete: !todo.complete }
         : todo
     );
+
+    this._commit(this.todos);
   }
 }
 
@@ -63,6 +77,9 @@ class View {
 
     // Append the title, form, and TODO list to the app
     this.app.append(this.title, this.form, this.todoList);
+
+    this._temporaryTodoText = '';
+    this._initLocalListeners();
   }
 
   get _todoText() {
@@ -96,7 +113,7 @@ class View {
       p.textContent = 'No tasks, maybe add some?';
       this.todoList.append(p);
     } else {
-      // Create TODO item nodes for each todo in state
+      // Create TODO item nodes for each TODO in state
       todos.forEach((todo) => {
         const li = this.createElement('li');
         li.id = todo.id;
@@ -130,6 +147,58 @@ class View {
         this.todoList.append(li);
       });
     }
+
+    console.log(todos);
+  }
+
+  _initLocalListeners() {
+    this.todoList.addEventListener('input', (event) => {
+      if (event.target.className === 'editable') {
+        this._temporaryTodoText = event.target.innerText;
+      }
+    });
+  }
+
+  bindAddTodo(handler) {
+    this.form.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      if (this._todoText) {
+        handler(this._todoText);
+        this._resetInput();
+      }
+    });
+  }
+
+  bindDeleteTodo(handler) {
+    this.todoList.addEventListener('click', (event) => {
+      if (event.target.className === 'delete') {
+        const id = parseInt(event.target.parentElement.id);
+
+        handler(id);
+      }
+    });
+  }
+
+  bindEditTodo(handler) {
+    this.todoList.addEventListener('focusout', (event) => {
+      if (this._temporaryTodoText) {
+        const id = parseInt(event.target.parentElement.id);
+
+        handler(id, this._temporaryTodoText);
+        this._temporaryTodoText = '';
+      }
+    });
+  }
+
+  bindToggleTodo(handler) {
+    this.todoList.addEventListener('change', (event) => {
+      if (event.target.type === 'checkbox') {
+        const id = parseInt(event.target.parentElement.id);
+
+        handler(id);
+      }
+    });
   }
 }
 
@@ -137,7 +206,35 @@ class Controller {
   constructor(model, view) {
     this.model = model;
     this.view = view;
+
+    this.model.bindTodoListChanged(this.onTodoListChanged);
+    this.view.bindAddTodo(this.handleAddTodo);
+    this.view.bindEditTodo(this.handleEditTodo);
+    this.view.bindDeleteTodo(this.handleDeleteTodo);
+    this.view.bindToggleTodo(this.handleToggleTodo);
+
+    this.onTodoListChanged(this.model.todos);
   }
+
+  onTodoListChanged = (todos) => {
+    this.view.displayTodos(todos);
+  };
+
+  handleAddTodo = (todoText) => {
+    this.model.addTodo(todoText);
+  };
+
+  handleEditTodo = (id, todoText) => {
+    this.model.editTodo(id, todoText);
+  };
+
+  handleDeleteTodo = (id) => {
+    this.model.deleteTodo(id);
+  };
+
+  handleToggleTodo = (id) => {
+    this.model.toggleTodo(id);
+  };
 }
 
 const app = new Controller(new Model(), new View());
